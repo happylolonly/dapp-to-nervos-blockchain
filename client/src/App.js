@@ -1,9 +1,13 @@
 import React, { Component } from "react";
 import MySimpleTodoContract from "./contracts/MySimpleTodoContract.json";
-import getWeb3 from "./getWeb3";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import getWeb3, { createWeb3 } from "./getWeb3";
+// import { ToastContainer, toast } from "react-toastify";
+// import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
+
+const DEFAULT_SEND_OPTIONS = {
+  gas: 6000000,
+};
 
 class App extends Component {
   state = {
@@ -13,29 +17,35 @@ class App extends Component {
     contract: null,
     value: 7,
     deployedContract: null,
+    balance: null,
   };
 
   componentDidMount = async () => {
     try {
       // Get network provider and web3 instance.
-      const web3 = await getWeb3();
+      const web3 = await createWeb3();
 
       this.web3 = web3;
 
       // Use web3 to get the user's accounts.
-      const accounts = await web3.eth.getAccounts();
+      const accounts = [window.ethereum.selectedAddress];
+
+      debugger;
+
+      const _l2Balance = await web3.eth.getBalance(accounts[0]);
+      this.setState({ balance: _l2Balance });
 
       // Get the contract instance.
-      const networkId = await web3.eth.net.getId();
-      const deployedNetwork = MySimpleTodoContract.networks[networkId];
-      const instance = new web3.eth.Contract(
-        MySimpleTodoContract.abi,
-        deployedNetwork && deployedNetwork.address
-      );
+      // const networkId = await web3.eth.net.getId();
+      // const deployedNetwork = MySimpleTodoContract.networks[networkId];
+      // const instance = new web3.eth.Contract(
+      //   MySimpleTodoContract.abi,
+      //   deployedNetwork && deployedNetwork.address
+      // );
 
       // Set web3, accounts, and contract to the state, and then proceed with an
       // example of interacting with the contract's methods.
-      this.setState({ web3, accounts, contract: instance }, this.runExample);
+      this.setState({ web3, accounts, contract: "" }, this.runExample);
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -48,13 +58,17 @@ class App extends Component {
   deploy = async (fromAddress) => {
     const contract = new this.web3.eth.Contract(MySimpleTodoContract.abi);
 
+    debugger;
+
     const contract2 = await contract
       .deploy({
         data: MySimpleTodoContract.bytecode,
         arguments: [],
       })
       .send({
+        ...DEFAULT_SEND_OPTIONS,
         from: fromAddress,
+        to: "0x0000000000000000000000000000000000000000",
       });
 
     this.setState({ deployedContract: contract2 });
@@ -80,7 +94,7 @@ class App extends Component {
       return <div>Loading Web3, accounts, and contract...</div>;
     }
 
-    const { deployedContract, todo } = this.state;
+    const { deployedContract, todo, balance } = this.state;
 
     return (
       <div className="App">
@@ -90,6 +104,8 @@ class App extends Component {
         <p>
           You can deploy contract to network and then use it to store todo! 😄
         </p>
+
+        <p>Balance: {balance}</p>
 
         <button onClick={() => this.deploy(this.state.accounts[0])}>
           Deploy
@@ -116,9 +132,10 @@ class App extends Component {
               onClick={async () => {
                 const value = prompt();
                 // await this.state.deployedContract.methods.addTodo(value).call();
-                await this.state.deployedContract.methods
-                  .addTodo(value)
-                  .send({ from: this.state.accounts[0] });
+                await this.state.deployedContract.methods.addTodo(value).send({
+                  ...DEFAULT_SEND_OPTIONS,
+                  from: this.state.accounts[0],
+                });
               }}
             >
               add todo
@@ -127,9 +144,10 @@ class App extends Component {
             <button
               onClick={async () => {
                 // await this.state.deployedContract.methods.addTodo(value).call();
-                await this.state.deployedContract.methods
-                  .addTodo("")
-                  .send({ from: this.state.accounts[0] });
+                await this.state.deployedContract.methods.addTodo("").send({
+                  ...DEFAULT_SEND_OPTIONS,
+                  from: this.state.accounts[0],
+                });
               }}
             >
               delete todo
