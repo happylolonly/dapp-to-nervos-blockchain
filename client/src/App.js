@@ -30,8 +30,6 @@ class App extends Component {
       // Use web3 to get the user's accounts.
       const accounts = [window.ethereum.selectedAddress];
 
-      debugger;
-
       const _l2Balance = await web3.eth.getBalance(accounts[0]);
       this.setState({ balance: _l2Balance });
 
