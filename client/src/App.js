@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 import MySimpleTodoContract from "./contracts/MySimpleTodoContract.json";
 import getWeb3, { createWeb3 } from "./getWeb3";
-// import { ToastContainer, toast } from "react-toastify";
-// import "react-toastify/dist/ReactToastify.css";
+import { AddressTranslator } from "./lib/nervos-godwoken-integration";
 import "./App.css";
 
 const DEFAULT_SEND_OPTIONS = {
@@ -18,6 +17,8 @@ class App extends Component {
     value: 7,
     deployedContract: null,
     balance: null,
+    deploying: false,
+    polyjuiceAddress: null,
   };
 
   componentDidMount = async () => {
@@ -30,8 +31,12 @@ class App extends Component {
       // Use web3 to get the user's accounts.
       const accounts = [window.ethereum.selectedAddress];
 
+      const addressTranslator = new AddressTranslator();
+      const polyjuiceAddress =
+        addressTranslator.ethAddressToGodwokenShortAddress(accounts[0]);
+
       const _l2Balance = await web3.eth.getBalance(accounts[0]);
-      this.setState({ balance: _l2Balance });
+      this.setState({ balance: _l2Balance, polyjuiceAddress });
 
       // Get the contract instance.
       // const networkId = await web3.eth.net.getId();
@@ -56,21 +61,24 @@ class App extends Component {
   deploy = async (fromAddress) => {
     const contract = new this.web3.eth.Contract(MySimpleTodoContract.abi);
 
-    debugger;
+    this.setState({ deploying: true });
+    try {
+      const contract2 = await contract
+        .deploy({
+          data: MySimpleTodoContract.bytecode,
+          arguments: [],
+        })
+        .send({
+          ...DEFAULT_SEND_OPTIONS,
+          from: fromAddress,
+          to: "0x0000000000000000000000000000000000000000",
+        });
+      this.setState({ deployedContract: contract2 });
+    } catch (error) {
+      console.error(error);
+    }
 
-    const contract2 = await contract
-      .deploy({
-        data: MySimpleTodoContract.bytecode,
-        arguments: [],
-      })
-      .send({
-        ...DEFAULT_SEND_OPTIONS,
-        from: fromAddress,
-        to: "0x0000000000000000000000000000000000000000",
-      });
-
-    this.setState({ deployedContract: contract2 });
-    // toast.success("Contract deployed");
+    this.setState({ deploying: false });
   };
 
   runExample = async () => {
@@ -100,21 +108,30 @@ class App extends Component {
         <h1>Hi!</h1>
         <p>It is my learning TODO smart contract app.</p>
         <p>
-          You can deploy contract to network and then use it to store todo! 😄
+          You can deploy contract to Nervos network and then use it to store
+          todo! 😄
         </p>
 
+        <br />
+
+        <p>ETH: {this.state.accounts[0]}</p>
+        {this.state.polyjuiceAddress && (
+          <p>Polyjuice Address: {this.state.polyjuiceAddress}</p>
+        )}
         <p>Balance: {balance}</p>
 
         <button onClick={() => this.deploy(this.state.accounts[0])}>
           Deploy
         </button>
 
+        {this.state.deploying && (
+          <span>Contract is deploying to Layer 2, please wait...</span>
+        )}
+
         {deployedContract && (
           <div>
-            <h5>Your contract address: {deployedContract._address}</h5>
-            {/* <p>
-          Try changing the value stored on <strong>line 42</strong> of App.js.
-        </p> */}
+            <h5>Your contract address: {deployedContract.contractAddress}</h5>
+
             <button
               onClick={async () => {
                 const value = await this.state.deployedContract.methods
