@@ -16,34 +16,34 @@ const providerConfig = {
   web3Url: godwokenRpcUrl,
 };
 
-export async function createWeb3() {
-  // Modern dapp browsers...
-  if (window.ethereum) {
-    const godwokenRpcUrl = CONFIG.WEB3_PROVIDER_URL;
-    const providerConfig = {
-      rollupTypeHash: CONFIG.ROLLUP_TYPE_HASH,
-      ethAccountLockCodeHash: CONFIG.ETH_ACCOUNT_LOCK_CODE_HASH,
-      web3Url: godwokenRpcUrl,
-    };
+// export async function createWeb3() {
+//   // Modern dapp browsers...
+//   if (window.ethereum) {
+//     const godwokenRpcUrl = CONFIG.WEB3_PROVIDER_URL;
+//     const providerConfig = {
+//       rollupTypeHash: CONFIG.ROLLUP_TYPE_HASH,
+//       ethAccountLockCodeHash: CONFIG.ETH_ACCOUNT_LOCK_CODE_HASH,
+//       web3Url: godwokenRpcUrl,
+//     };
 
-    const provider = new PolyjuiceHttpProvider(godwokenRpcUrl, providerConfig);
-    const web3 = new Web3(provider || Web3.givenProvider);
+//     const provider = new PolyjuiceHttpProvider(godwokenRpcUrl, providerConfig);
+//     const web3 = new Web3(provider || Web3.givenProvider);
 
-    try {
-      // Request account access if needed
-      await window.ethereum.enable();
-    } catch (error) {
-      // User denied account access...
-    }
+//     try {
+//       // Request account access if needed
+//       await window.ethereum.enable();
+//     } catch (error) {
+//       // User denied account access...
+//     }
 
-    return web3;
-  }
+//     return web3;
+//   }
 
-  console.log(
-    "Non-Ethereum browser detected. You should consider trying MetaMask!"
-  );
-  return null;
-}
+//   console.log(
+//     "Non-Ethereum browser detected. You should consider trying MetaMask!"
+//   );
+//   return null;
+// }
 
 const provider = new PolyjuiceHttpProvider(godwokenRpcUrl, providerConfig);
 

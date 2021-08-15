@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import MySimpleTodoContract from "./contracts/MySimpleTodoContract.json";
-import getWeb3, { createWeb3 } from "./getWeb3";
-import { AddressTranslator } from "./lib/nervos-godwoken-integration";
+import getWeb3 from "./getWeb3";
+import { AddressTranslator } from "nervos-godwoken-integration";
 import "./App.css";
 
 const DEFAULT_SEND_OPTIONS = {
@@ -19,14 +19,23 @@ class App extends Component {
     balance: null,
     deploying: false,
     polyjuiceAddress: null,
+    contractLoading: false,
   };
 
   componentDidMount = async () => {
     try {
       // Get network provider and web3 instance.
-      const web3 = await createWeb3();
+      const web3 = await getWeb3();
 
       this.web3 = web3;
+
+      const contract = new this.web3.eth.Contract(MySimpleTodoContract.abi);
+
+      this.contract = contract;
+
+      // const contractAddress = "0x5d69c5b7082E928B9169381900a69cc07033B202";
+
+      // this.contract.options.address = contractAddress;
 
       // Use web3 to get the user's accounts.
       const accounts = [window.ethereum.selectedAddress];
@@ -34,6 +43,16 @@ class App extends Component {
       const addressTranslator = new AddressTranslator();
       const polyjuiceAddress =
         addressTranslator.ethAddressToGodwokenShortAddress(accounts[0]);
+
+      debugger;
+      const depositAddress = await addressTranslator.getLayer2DepositAddress(
+        web3,
+        accounts[0]
+      );
+
+      console.log(
+        `Layer 2 Deposit Address on Layer 1: \n${depositAddress.addressString}`
+      );
 
       const _l2Balance = await web3.eth.getBalance(accounts[0]);
       this.setState({ balance: _l2Balance, polyjuiceAddress });
@@ -59,11 +78,9 @@ class App extends Component {
   };
 
   deploy = async (fromAddress) => {
-    const contract = new this.web3.eth.Contract(MySimpleTodoContract.abi);
-
     this.setState({ deploying: true });
     try {
-      const contract2 = await contract
+      const contract2 = await this.contract
         .deploy({
           data: MySimpleTodoContract.bytecode,
           arguments: [],
@@ -95,12 +112,13 @@ class App extends Component {
   };
 
   render() {
-    console.log(this.state);
+    console.log(this.state, this.contract);
+
     if (!this.state.web3) {
       return <div>Loading Web3, accounts, and contract...</div>;
     }
 
-    const { deployedContract, todo, balance } = this.state;
+    const { todo, balance, accounts, contractLoading } = this.state;
 
     return (
       <div className="App">
@@ -124,21 +142,43 @@ class App extends Component {
           Deploy
         </button>
 
+        <div>
+          or use existing address:
+          <input
+            type="text"
+            onChange={({ target: { value } }) => {
+              if (value.length === 42) {
+                this.contract.options.address = value;
+                this.forceUpdate();
+              }
+            }}
+          />
+        </div>
+
         {this.state.deploying && (
           <span>Contract is deploying to Layer 2, please wait...</span>
         )}
 
-        {deployedContract && (
+        {this.contract.options.address && (
           <div>
-            <h5>Your contract address: {deployedContract.contractAddress}</h5>
+            <h5>Your contract address: {this.contract.options.address}</h5>
+
+            {contractLoading && <p>Contract is loading... please wait</p>}
 
             <button
               onClick={async () => {
-                const value = await this.state.deployedContract.methods
-                  .getTodo()
-                  .call();
+                this.setState({ contractLoading: true });
 
-                this.setState({ todo: value });
+                try {
+                  const value = await this.contract.methods.getTodo().call({
+                    from: accounts[0],
+                  });
+
+                  this.setState({ todo: value });
+                } catch (error) {
+                  console.error(error);
+                }
+                this.setState({ contractLoading: false });
               }}
             >
               get todo
@@ -146,11 +186,17 @@ class App extends Component {
             <button
               onClick={async () => {
                 const value = prompt();
-                // await this.state.deployedContract.methods.addTodo(value).call();
-                await this.state.deployedContract.methods.addTodo(value).send({
-                  ...DEFAULT_SEND_OPTIONS,
-                  from: this.state.accounts[0],
-                });
+                this.setState({ contractLoading: true });
+
+                try {
+                  await this.contract.methods.addTodo(value).send({
+                    ...DEFAULT_SEND_OPTIONS,
+                    from: accounts[0],
+                  });
+                } catch (error) {
+                  console.error(error);
+                }
+                this.setState({ contractLoading: false });
               }}
             >
               add todo
@@ -158,11 +204,17 @@ class App extends Component {
 
             <button
               onClick={async () => {
-                // await this.state.deployedContract.methods.addTodo(value).call();
-                await this.state.deployedContract.methods.addTodo("").send({
-                  ...DEFAULT_SEND_OPTIONS,
-                  from: this.state.accounts[0],
-                });
+                this.setState({ contractLoading: true });
+
+                try {
+                  await this.contract.methods.addTodo("").send({
+                    ...DEFAULT_SEND_OPTIONS,
+                    from: accounts[0],
+                  });
+                } catch (error) {
+                  console.error(error);
+                }
+                this.setState({ contractLoading: false });
               }}
             >
               delete todo
