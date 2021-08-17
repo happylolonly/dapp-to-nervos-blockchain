@@ -20,6 +20,7 @@ class App extends Component {
     deploying: false,
     polyjuiceAddress: null,
     contractLoading: false,
+    layer2DepositAddress: null,
   };
 
   componentDidMount = async () => {
@@ -44,7 +45,6 @@ class App extends Component {
       const polyjuiceAddress =
         addressTranslator.ethAddressToGodwokenShortAddress(accounts[0]);
 
-      debugger;
       const depositAddress = await addressTranslator.getLayer2DepositAddress(
         web3,
         accounts[0]
@@ -55,7 +55,11 @@ class App extends Component {
       );
 
       const _l2Balance = await web3.eth.getBalance(accounts[0]);
-      this.setState({ balance: _l2Balance, polyjuiceAddress });
+      this.setState({
+        balance: _l2Balance,
+        polyjuiceAddress,
+        layer2DepositAddress: depositAddress.addressString,
+      });
 
       // Get the contract instance.
       // const networkId = await web3.eth.net.getId();
@@ -118,7 +122,8 @@ class App extends Component {
       return <div>Loading Web3, accounts, and contract...</div>;
     }
 
-    const { todo, balance, accounts, contractLoading } = this.state;
+    const { todo, balance, accounts, contractLoading, layer2DepositAddress } =
+      this.state;
 
     return (
       <div className="App">
@@ -137,6 +142,30 @@ class App extends Component {
           <p>Polyjuice Address: {this.state.polyjuiceAddress}</p>
         )}
         <p>Balance: {balance}</p>
+
+        {layer2DepositAddress && (
+          <div
+            style={{
+              border: "1px solid yellow",
+            }}
+          >
+            <p
+              style={{
+                wordBreak: "break-all",
+              }}
+            >
+              Layer2 Deposit Address: {layer2DepositAddress}
+            </p>
+            <p>Use this address as 'Recipient' to fill</p>
+            <a
+              href="https://force-bridge-test.ckbapp.dev/bridge/Ethereum/Nervos?xchain-asset=0x0000000000000000000000000000000000000000"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Deposit to Layer2 using Force bridge
+            </a>
+          </div>
+        )}
 
         <button onClick={() => this.deploy(this.state.accounts[0])}>
           Deploy
