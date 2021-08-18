@@ -1,5 +1,8 @@
+/* global BigInt */
+
 import React, { Component } from "react";
 import MySimpleTodoContract from "./contracts/MySimpleTodoContract.json";
+import SUDTProxyContract from "./contracts/SUDTProxy.json";
 import getWeb3 from "./getWeb3";
 import { AddressTranslator } from "nervos-godwoken-integration";
 import "./App.css";
@@ -7,6 +10,8 @@ import "./App.css";
 const DEFAULT_SEND_OPTIONS = {
   gas: 6000000,
 };
+
+const PROXY_CONTRACT_ADDRESS = "0x88086eA40efAC60e9B7F7Fa133A84E652517Cf67";
 
 class App extends Component {
   state = {
@@ -17,6 +22,7 @@ class App extends Component {
     value: 7,
     deployedContract: null,
     balance: null,
+    l2ckETHBalance: null,
     deploying: false,
     polyjuiceAddress: null,
     contractLoading: false,
@@ -31,6 +37,10 @@ class App extends Component {
       this.web3 = web3;
 
       const contract = new this.web3.eth.Contract(MySimpleTodoContract.abi);
+      this.proxyContract = new this.web3.eth.Contract(
+        SUDTProxyContract.abi,
+        PROXY_CONTRACT_ADDRESS
+      );
 
       this.contract = contract;
 
@@ -71,7 +81,9 @@ class App extends Component {
 
       // Set web3, accounts, and contract to the state, and then proceed with an
       // example of interacting with the contract's methods.
-      this.setState({ web3, accounts, contract: "" }, this.runExample);
+      this.setState({ web3, accounts, contract: "" }, () => {
+        this.checkckETHBalance();
+      });
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -79,6 +91,18 @@ class App extends Component {
       );
       console.error(error);
     }
+  };
+
+  checkckETHBalance = async () => {
+    const l2ckETHBalance = BigInt(
+      await this.proxyContract.methods
+        .balanceOf(this.state.polyjuiceAddress)
+        .call({
+          from: this.state.accounts[0],
+        })
+    );
+
+    this.setState({ l2ckETHBalance });
   };
 
   deploy = async (fromAddress) => {
@@ -122,8 +146,14 @@ class App extends Component {
       return <div>Loading Web3, accounts, and contract...</div>;
     }
 
-    const { todo, balance, accounts, contractLoading, layer2DepositAddress } =
-      this.state;
+    const {
+      todo,
+      balance,
+      accounts,
+      contractLoading,
+      layer2DepositAddress,
+      l2ckETHBalance,
+    } = this.state;
 
     return (
       <div className="App">
@@ -142,6 +172,10 @@ class App extends Component {
           <p>Polyjuice Address: {this.state.polyjuiceAddress}</p>
         )}
         <p>Balance: {balance}</p>
+
+        {l2ckETHBalance && (
+          <p>Layer 2 ckETH balance: {l2ckETHBalance.toString()} Wei</p>
+        )}
 
         {layer2DepositAddress && (
           <div
@@ -182,6 +216,7 @@ class App extends Component {
               }
             }}
           />
+          <p>for example 0x5d69c5b7082E928B9169381900a69cc07033B202</p>
         </div>
 
         {this.state.deploying && (
